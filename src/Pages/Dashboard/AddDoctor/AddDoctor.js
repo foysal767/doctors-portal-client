@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import Loading from '../../Home/Shared/Loading/Loading';
 
 const AddDoctor = () => {
     const { register, handleSubmit, formState: { errors } } = useForm();
 
     const imageHostingKey = process.env.REACT_APP_imgbb_key;
+
+    const navigate = useNavigate()
 
     const { data: specialties, isLoading } = useQuery({
         queryKey: ['specialty'],
@@ -19,11 +23,11 @@ const AddDoctor = () => {
     })
 
     const handleAddDoctor = data => {
-        console.log(data.image[0])
+        // console.log(data.image[0])
         const image = data.image[0];
         const formData = new FormData();
         formData.append('image', image);
-        const url = `https://api.imgbb.com/1/upload?expiration=600&key=${imageHostingKey}`
+        const url = `https://api.imgbb.com/1/upload?key=${imageHostingKey}`
         fetch(url, {
             method: 'POST',
             body: formData
@@ -32,7 +36,27 @@ const AddDoctor = () => {
             .then(imgData => {
                 if (imgData.success) {
                     console.log(imgData.data.url)
-
+                    const doctor = {
+                        name: data.name,
+                        email: data.email,
+                        specialty: data.specialty,
+                        image: imgData.data.url
+                    }
+                    //save doctor information to the database....
+                    fetch('http://localhost:5000/doctors', {
+                        method: 'POST',
+                        headers: {
+                            'content-type':'application/json',
+                            authorization: `bearer ${localStorage.getItem('accessToken')}`
+                        },
+                        body: JSON.stringify(doctor)
+                    })
+                    .then(res => res.json())
+                    .then(result => {
+                        console.log(result)
+                        toast.success(`${data.name} is Added Successfully`)
+                        navigate('/dashboard/manageDoctors')
+                    })
                 }
             })
     }
